@@ -180,6 +180,35 @@ test('mobile viewport: bottom navigation, no horizontal overflow', async ({ page
   await page.screenshot({ path: 'e2e/shots/mobile-home.png' })
 })
 
+test('New releases on a phone: filters fit the screen, switches have visible labels, playable releases come first', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/#/new')
+  await page.waitForFunction(() => !!(window as any).__opensong?.db)
+  const day = (n: number) => new Date(Date.now() - n * 86400_000).toISOString().slice(0, 10)
+  await page.evaluate(async (dates) => {
+    const { db } = (window as any).__opensong
+    const now = Date.now()
+    const mk = (i: number, availability: string) => ({ id: `t:${i}`, kind: 'single', title: `Fixture song ${i}`, artist: `Fixture artist ${i}`, releaseDate: dates[i % dates.length], source: 'jamendo', sourceId: String(i), availability, discoveredAt: now, catalogAddedAt: now, lastSeenAt: now, dkey: `fixture|${i}` })
+    await db.catalog.clear()
+    await db.catalog.bulkPut([...Array.from({ length: 12 }, (_, i) => mk(i, 'metadata')), mk(100, 'full'), mk(101, 'full')])
+  }, [day(1), day(2), day(3)])
+  await page.reload()
+  await expect(page.getByRole('switch', { name: 'Independent artists' })).toBeVisible()
+  // labels are real, visible text (not just aria-labels)
+  await expect(page.getByText('Independent artists', { exact: true })).toBeVisible()
+  await expect(page.getByText(/^Followed artists/)).toBeVisible()
+  // nothing inside the page may be wider than the viewport
+  const wide = await page.evaluate(() => [...document.querySelectorAll('main *')].filter((el) => el.getBoundingClientRect().right > window.innerWidth + 1 && !el.closest('[class*="overflow-x-auto"]')).map((el) => `${el.tagName}.${(el as HTMLElement).className}`.slice(0, 80)))
+  expect(wide).toEqual([])
+  // 'Listen now' is the automatic default when something is playable
+  await expect(page.getByRole('button', { name: 'Listen now' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByText('Fixture song 100').first()).toBeVisible()
+  await expect(page.getByText('Fixture song 3', { exact: true })).toHaveCount(0)
+  await page.getByRole('button', { name: /more are info-only/ }).click()
+  await expect(page.getByText('Fixture song 3').first()).toBeVisible()
+  await page.screenshot({ path: 'e2e/shots/mobile-new-releases.png', fullPage: false })
+})
+
 test('production build: no Content-Security-Policy violations while using the app and playing audio', async ({ page }) => {
   const violations: string[] = []
   await page.addInitScript(() => {

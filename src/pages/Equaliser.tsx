@@ -49,7 +49,7 @@ export default function Equaliser() {
   return (
     <div className="space-y-6">
       <PageHeader title="Equaliser" subtitle="Real-time Web Audio filters on everything you play, with the output limiter always on." actions={<>
-        <Switch label="Equaliser on" checked={eq.enabled} onChange={(v) => setEq({ enabled: v })} />
+        <Switch showLabel label="Equaliser on" checked={eq.enabled} onChange={(v) => setEq({ enabled: v })} />
         <Button size="sm" onClick={resetEq}><RotateCcw size={14} />Reset</Button>
       </>} />
 

@@ -42,17 +42,24 @@ export function Input({ className, ...p }: InputHTMLAttributes<HTMLInputElement>
 }
 
 export function Select({ className, children, ...p }: SelectHTMLAttributes<HTMLSelectElement>) {
-  return <select {...p} className={cn('h-10 rounded-xl border border-line bg-surface px-3 text-sm text-fg outline-none focus:border-accent', className)}>{children}</select>
+  return <select {...p} className={cn('h-10 w-full min-w-0 max-w-full truncate rounded-xl border border-line bg-surface px-3 text-sm text-fg outline-none focus:border-accent', className)}>{children}</select>
 }
 
-export function Switch({ checked, onChange, label, disabled }: { checked: boolean; onChange: (v: boolean) => void; label: string; disabled?: boolean }) {
+/** `showLabel` renders the label as visible text next to the switch (the whole row is the tap target). */
+export function Switch({ checked, onChange, label, disabled, showLabel }: { checked: boolean; onChange: (v: boolean) => void; label: string; disabled?: boolean; showLabel?: boolean }) {
+  const track = (
+    <span className={cn('relative block h-6 w-11 shrink-0 rounded-full transition', checked ? 'bg-accent' : 'bg-line')}>
+      <span className={cn('absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all', checked ? 'left-[22px]' : 'left-0.5')} />
+    </span>
+  )
   return (
     <button
       type="button" role="switch" aria-checked={checked} aria-label={label} disabled={disabled}
       onClick={() => onChange(!checked)}
-      className={cn('relative h-6 w-11 shrink-0 rounded-full transition disabled:opacity-40', checked ? 'bg-accent' : 'bg-line')}
+      className={cn('inline-flex shrink-0 items-center gap-2 text-left disabled:opacity-40', showLabel && 'min-h-9 text-sm')}
     >
-      <span className={cn('absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all', checked ? 'left-[22px]' : 'left-0.5')} />
+      {track}
+      {showLabel && <span className="min-w-0">{label}</span>}
     </button>
   )
 }

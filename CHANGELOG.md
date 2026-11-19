@@ -4,6 +4,15 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ## [Unreleased]
 
+### Fixed
+- New releases on phones: the four filter dropdowns no longer run off the right edge (2×2 grid), and switches now show visible labels (also the Equaliser "on" switch).
+
+### Changed
+- New releases opens on "Listen now" (only releases with a legal stream) when the catalogue has any; "Everything" shows info-only releases too.
+
+### Tests
+- New browser test checks that no element on New releases is wider than a 390 px screen and that switch labels are visible text.
+
 ## [0.1.0]
 
 First public version.

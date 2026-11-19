@@ -1,4 +1,4 @@
-import { CalendarX, Filter, Music2 } from 'lucide-react'
+import { CalendarX, Filter, Headphones, Music2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { applyFilter, type ReleaseFilter, type Window } from '../catalog/queries'
 import { useSync } from '../catalog/sync'
@@ -9,6 +9,7 @@ import { SyncButton } from '../components/SyncButton'
 import { Button, Card, Chip, EmptyState, Select, Skeleton, Switch } from '../components/ui'
 import { sourceName } from '../components/Badges'
 import { useCatalog, useFollows } from '../lib/data'
+import { canPlayRelease } from '../lib/playback'
 import { formatDate, parseDate, timeAgo } from '../lib/util'
 import { providers } from '../providers/registry'
 import type { Release, ReleaseKind } from '../types'
@@ -29,7 +30,9 @@ export default function NewReleases() {
   const [follows] = useFollows()
   const syncing = useSync((s) => s.running)
   const last = useSync((s) => s.last)
-  const [f, setF] = useState<ReleaseFilter>({ window: 'month', kind: 'all', playableOnly: false, independentOnly: false })
+  const [f, setF] = useState<ReleaseFilter>({ window: 'month', kind: 'all', independentOnly: false })
+  // null = automatic: show only releases you can hear when the catalogue has any, otherwise show everything
+  const [listen, setListen] = useState<boolean | null>(null)
   const [followedOnly, setFollowedOnly] = useState(false)
   const [limit, setLimit] = useState(PAGE)
   const set = (p: Partial<ReleaseFilter>) => { setF((x) => ({ ...x, ...p })); setLimit(PAGE) }
@@ -37,7 +40,10 @@ export default function NewReleases() {
   const genres = useMemo(() => [...new Set((catalog ?? []).flatMap((r) => [r.genre, ...(r.tags ?? [])]).filter((g): g is string => !!g).map((g) => g.toLowerCase()))].sort().slice(0, 80), [catalog])
   const countries = useMemo(() => [...new Set((catalog ?? []).map((r) => r.country).filter((c): c is string => !!c))].sort(), [catalog])
 
-  const rows = useMemo(() => applyFilter(catalog ?? [], { ...f, followedOnly: followedOnly ? (follows ?? []).map((x) => x.name) : undefined }), [catalog, f, followedOnly, follows])
+  const hasPlayable = useMemo(() => (catalog ?? []).some(canPlayRelease), [catalog])
+  const listenOnly = listen ?? hasPlayable
+  const rows = useMemo(() => applyFilter(catalog ?? [], { ...f, playableOnly: listenOnly, followedOnly: followedOnly ? (follows ?? []).map((x) => x.name) : undefined }), [catalog, f, listenOnly, followedOnly, follows])
+  const hiddenMetadata = useMemo(() => listenOnly ? applyFilter(catalog ?? [], { ...f, playableOnly: false, followedOnly: followedOnly ? (follows ?? []).map((x) => x.name) : undefined }).length - rows.length : 0, [catalog, f, listenOnly, followedOnly, follows, rows.length])
   const visible = rows.slice(0, limit)
   const groups = useMemo(() => {
     const out: { key: string; label: string; sub?: string; items: Release[] }[] = []
@@ -52,32 +58,36 @@ export default function NewReleases() {
       <PageHeader title="New releases" subtitle={last ? `Catalogue updated ${timeAgo(last.at)} · ${catalog?.length ?? 0} releases on this device` : `${catalog?.length ?? 0} releases on this device`} actions={<SyncButton />} />
 
       <Card className="space-y-4">
-        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Release window">
-          <Filter size={14} className="text-muted" />
+        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="What to show">
+          <Chip active={listenOnly} onClick={() => { setListen(true); setLimit(PAGE) }}><Headphones size={13} className="mr-1 inline" />Listen now</Chip>
+          <Chip active={!listenOnly} onClick={() => { setListen(false); setLimit(PAGE) }}>Everything</Chip>
+        </div>
+        <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-0.5" role="group" aria-label="Release window">
+          <Filter size={14} className="shrink-0 text-muted" />
           {WINDOWS.map(([w, label]) => <Chip key={w} active={f.window === w} onClick={() => set({ window: w })}>{label}</Chip>)}
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
           <Select aria-label="Release type" value={f.kind} onChange={(e) => set({ kind: e.target.value as ReleaseKind | 'all' })}>{KINDS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</Select>
           <Select aria-label="Genre" value={f.genre ?? ''} onChange={(e) => set({ genre: e.target.value || undefined })}><option value="">All genres</option>{genres.map((g) => <option key={g} value={g}>{g}</option>)}</Select>
           <Select aria-label="Country" value={f.country ?? ''} onChange={(e) => set({ country: e.target.value || undefined })}><option value="">All countries</option>{countries.map((c) => <option key={c} value={c}>{c}</option>)}</Select>
           <Select aria-label="Source" value={f.source ?? ''} onChange={(e) => set({ source: e.target.value || undefined })}><option value="">All sources</option>{providers.map((p) => <option key={p.id} value={p.id}>{sourceName(p.id)}</option>)}</Select>
         </div>
-        <div className="flex flex-wrap gap-x-6 gap-y-2">
-          <Switch label="Playable only" checked={!!f.playableOnly} onChange={(v) => set({ playableOnly: v })} />
-          <Switch label="Independent artists" checked={!!f.independentOnly} onChange={(v) => set({ independentOnly: v })} />
-          <Switch label={`Followed artists${(follows?.length ?? 0) ? ` (${follows!.length})` : ''}`} checked={followedOnly} onChange={(v) => { setFollowedOnly(v); setLimit(PAGE) }} />
+        <div className="flex flex-wrap gap-x-5 gap-y-1">
+          <Switch showLabel label="Independent artists" checked={!!f.independentOnly} onChange={(v) => set({ independentOnly: v })} />
+          <Switch showLabel label={`Followed artists${(follows?.length ?? 0) ? ` (${follows!.length})` : ''}`} checked={followedOnly} onChange={(v) => { setFollowedOnly(v); setLimit(PAGE) }} />
         </div>
       </Card>
 
       {loading ? <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">{Array.from({ length: 10 }, (_, i) => <Skeleton key={i} className="aspect-square !rounded-2xl" />)}</div>
         : rows.length === 0 ? (
           <EmptyState icon={<Music2 />} title={(catalog?.length ?? 0) === 0 ? 'No releases yet' : 'No releases match these filters'}
-            action={<div className="flex gap-2">{(catalog?.length ?? 0) > 0 && <Button onClick={() => { setF({ window: 'all', kind: 'all' }); setFollowedOnly(false) }}>Show everything</Button>}<SyncButton /></div>}>
+            action={<div className="flex gap-2">{(catalog?.length ?? 0) > 0 && <Button onClick={() => { setF({ window: 'all', kind: 'all' }); setListen(false); setFollowedOnly(false) }}>Show everything</Button>}<SyncButton /></div>}>
             {(catalog?.length ?? 0) === 0 ? (syncing ? 'Looking for new music…' : 'Press Refresh to fetch releases. If you are offline, connect once and OpenSong will fill this page.') : f.window !== 'all' && withDate === 0 ? 'None of the releases found so far include a release date, so date windows can’t include them. Try “All”.' : 'Try a wider window or remove a filter.'}
           </EmptyState>
         ) : (
           <>
-            <p className="text-xs text-muted">{rows.length} release{rows.length === 1 ? '' : 's'} · newest first · dates are exactly what each source reports</p>
+            <p className="text-xs text-muted">{rows.length} release{rows.length === 1 ? '' : 's'} · newest first · dates are exactly what each source reports
+              {listenOnly && hiddenMetadata > 0 && <> · <button type="button" className="underline" onClick={() => setListen(false)}>{hiddenMetadata} more are info-only (no legal stream)</button></>}</p>
             {groups.map((g) => (
               <section key={g.key} className="space-y-3" aria-label={g.label}>
                 <div className="flex items-baseline gap-2 border-b border-line pb-1"><h2 className="flex items-center gap-1.5 text-sm font-bold">{g.key === 'none' && <CalendarX size={14} className="text-muted" />}{g.label}</h2><span className="text-xs text-muted">{g.items.length}</span>{g.sub && <span className="hidden text-xs text-muted sm:inline">· {g.sub}</span>}</div>

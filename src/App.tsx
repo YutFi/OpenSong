@@ -2,6 +2,7 @@ import { Component, lazy, Suspense, useCallback, useEffect, useState, type React
 import { Route, Routes, useLocation } from 'react-router-dom'
 import { bindMediaSession } from './audio/mediaSession'
 import { engine } from './audio/engine'
+import { db } from './lib/db'
 import { AddToPlaylistDialog } from './components/AddToPlaylistDialog'
 import { MobileNav } from './components/MobileNav'
 import { NowPlaying } from './components/NowPlaying'
@@ -84,7 +85,7 @@ function useGlobalEffects() {
     bindMediaSession()
     const stop = startAutoSync()
     // Read-only debug handle used by the automated browser tests (no effect on normal use).
-    if (localStorage.getItem('opensong:debug') === '1') (window as unknown as Record<string, unknown>).__opensong = { engine, usePlayer, useSettings }
+    if (localStorage.getItem('opensong:debug') === '1') (window as unknown as Record<string, unknown>).__opensong = { engine, usePlayer, useSettings, db }
     return () => { unsub(); stop() }
   }, [])
 }
