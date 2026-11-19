@@ -14,7 +14,7 @@ export function bindMediaSession() {
   set('seekto', (d) => { if (d.seekTime != null) p().seek(d.seekTime) })
   set('seekbackward', (d) => p().seekBy(-(d.seekOffset ?? 10)))
   set('seekforward', (d) => p().seekBy(d.seekOffset ?? 10))
-  set('stop', () => { engine.pause() })
+  set('stop', () => { if (p().status === 'playing') void p().toggle() })
 
   let lastId: string | undefined
   let lastUrl: string | undefined

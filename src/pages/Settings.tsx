@@ -10,6 +10,7 @@ import { db, wipeAll } from '../lib/db'
 import { exportBackup, importBackup } from '../lib/library'
 import { SHORTCUTS } from '../lib/useShortcuts'
 import { download, timeAgo } from '../lib/util'
+import { providerContext } from '../lib/providerCtx'
 import { providers } from '../providers/registry'
 import { usePlayer } from '../store/player'
 import { DEFAULT_SETTINGS, useSettings, type Settings as S } from '../store/settings'
@@ -45,7 +46,7 @@ export default function Settings() {
     return () => window.removeEventListener('beforeinstallprompt', h)
   }, [counts?.tracks])
 
-  const hosts = [...new Set(providers.filter((p) => s.providers[p.id] !== false && (!p.keyRequired || s.jamendoClientId.trim())).flatMap((p) => p.hosts))].sort()
+  const hosts = [...new Set(providers.filter((p) => s.providers[p.id] !== false && p.isConfigured(providerContext().settings)).flatMap((p) => p.hosts))].sort()
 
   const toggleNotifs = async (v: boolean) => {
     if (!v) { set({ notifications: false }); return }
@@ -58,13 +59,13 @@ export default function Settings() {
   const doExport = async () => {
     const { set: _a, setEq: _b, setViz: _c, setBand: _d, applyPreset: _e, setBands: _f, resetEq: _g, ...settings } = useSettings.getState()
     void [_a, _b, _c, _d, _e, _f, _g]
-    download(`opensong-backup-${new Date().toISOString().slice(0, 10)}.json`, await exportBackup({ ...settings, jamendoClientId: '' }))
-    toast('Backup saved. It excludes your Jamendo client ID and your audio files.', 'success')
+    download(`opensong-backup-${new Date().toISOString().slice(0, 10)}.json`, await exportBackup({ ...settings, jamendoClientId: '', youtubeApiKey: '' }))
+    toast('Backup saved. It excludes your API keys and your audio files.', 'success')
   }
   const doImport = async (f: File) => {
     try {
       const r = await importBackup(await f.text())
-      if (r.settings && typeof r.settings === 'object') { const { jamendoClientId: _k, ...rest } = r.settings as Partial<S>; void _k; set(rest) }
+      if (r.settings && typeof r.settings === 'object') { const { jamendoClientId: _k, youtubeApiKey: _y, ...rest } = r.settings as Partial<S>; void [_k, _y]; set(rest) }
       toast(`Restored ${r.playlists} playlists, ${r.favourites} favourites, ${r.history} history entries`, 'success')
     } catch (e) { toast(e instanceof Error ? e.message : 'Could not read that backup', 'error') }
   }
@@ -93,6 +94,18 @@ export default function Settings() {
         <Field label="Jamendo client ID (optional, free)" hint={<>Jamendo needs a client ID for full-length streams. Create a free one at <a className="text-accent hover:underline" href="https://developer.jamendo.com/v3.0" target="_blank" rel="noopener noreferrer">developer.jamendo.com</a>. It stays in this browser and is never included in backups.</>}>
           <Input value={s.jamendoClientId} onChange={(e) => set({ jamendoClientId: e.target.value.trim() })} placeholder="e.g. 1a2b3c4d" autoComplete="off" spellCheck={false} aria-label="Jamendo client ID" />
         </Field>
+        <div className="space-y-3 rounded-2xl border border-line p-4">
+          <div className="min-w-0"><div className="font-medium">YouTube music: setup (optional, free)</div><div className="text-xs text-muted">Turn “YouTube (official player)” on above, then add your own free key. Off by default.</div></div>
+          <Field label="Your YouTube Data API key" hint={<>Free: create a key at <a className="text-accent hover:underline" href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer">Google Cloud Console</a>, enable “YouTube Data API v3”, and restrict the key to this site’s address. It stays in this browser and is never included in backups. Free quota only — if it runs out, YouTube results pause until it resets.</>}>
+            <Input value={s.youtubeApiKey} onChange={(e) => set({ youtubeApiKey: e.target.value.trim() })} placeholder="AIza…" autoComplete="off" spellCheck={false} aria-label="YouTube API key" />
+          </Field>
+          <Field label="Chart region (2-letter country code)"><Input value={s.youtubeRegion} maxLength={2} onChange={(e) => set({ youtubeRegion: e.target.value.toUpperCase().replace(/[^A-Z]/g, '') })} aria-label="YouTube region" className="w-24" /></Field>
+          <ul className="list-disc space-y-1 pl-5 text-xs text-muted">
+            <li><b className="text-fg">Privacy:</b> when you play a YouTube song, YouTube’s player loads from Google servers and may set cookies; Google’s terms and privacy policy apply to that. Nothing is loaded from YouTube until you turn this on and play a YouTube song.</li>
+            <li><b className="text-fg">Limits:</b> the player stays on screen while a song plays. The equaliser, visualiser, crossfade and speed don’t apply, and playback usually stops when the screen locks or the tab is in the background.</li>
+            <li>OpenSong never downloads or extracts YouTube audio.</li>
+          </ul>
+        </div>
         <Row title="Jamendo stream format"><Select aria-label="Jamendo format" className="w-auto" value={s.jamendoFormat} onChange={(e) => set({ jamendoFormat: e.target.value as S['jamendoFormat'] })}><option value="mp31">MP3 · 96 kbps</option><option value="mp32">MP3 · VBR (best)</option><option value="ogg">Ogg Vorbis</option><option value="flac">FLAC</option></Select></Row>
         <Row title="Internet Archive format"><Select aria-label="Archive format" className="w-auto" value={s.archiveFormat} onChange={(e) => set({ archiveFormat: e.target.value as S['archiveFormat'] })}><option value="mp3">MP3</option><option value="ogg">Ogg Vorbis</option></Select></Row>
         <div className="pt-2"><h3 className="mb-2 text-sm font-semibold">Source status</h3><ProviderHealthList compact /></div>

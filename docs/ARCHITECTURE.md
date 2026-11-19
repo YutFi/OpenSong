@@ -79,5 +79,5 @@ A track counts as a play after min(30 s, 50 % of its duration). Ranges are calen
 ## PWA and security
 
 - `vite-plugin-pwa` precaches the app shell. Audio and video requests are `NetworkOnly`: providers have not granted offline caching, so third-party audio is never stored. Cross-origin artwork is cached for 30 days.
-- Production builds inject a Content-Security-Policy `<meta>` (GitHub Pages cannot set headers): scripts from self only, `connect-src` limited to the five source hosts and Cover Art Archive, `object-src 'none'`. `style-src` allows inline styles because React and the charts use style attributes.
+- Production builds inject a Content-Security-Policy `<meta>` (GitHub Pages cannot set headers): scripts from self (plus `www.youtube.com` and `s.ytimg.com`, used only when you opt in to the YouTube source and play a YouTube song), `frame-src` limited to `www.youtube.com`, `connect-src` limited to the source hosts, Cover Art Archive and `www.googleapis.com` (YouTube Data API), `object-src 'none'`. `style-src` allows inline styles because React and the charts use style attributes.
 - Hash routing (`#/library`) avoids server rewrites on static hosts.

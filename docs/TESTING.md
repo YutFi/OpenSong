@@ -8,7 +8,7 @@
 
 Run: `npm test`, then `npm run build && npm run e2e`.
 
-## End-to-end scenarios (13)
+## End-to-end scenarios (16)
 
 1. Home renders and the app stays usable when every provider is unreachable; Refresh finishes without errors.
 2. Every route renders without a crash.
@@ -23,6 +23,10 @@ Run: `npm test`, then `npm run build && npm run e2e`.
 11. Phone viewport (390 px): bottom navigation present and six main routes have no horizontal overflow.
 12. Security: the production build contains a CSP meta tag, and no `securitypolicyviolation` event fires while importing, playing and visiting eight routes.
 13. Performance: first load fetches under 700 KB of uncompressed JavaScript (measured: 524 KB, about 168 KB gzipped) and does not fetch the `music-metadata` parser chunks until files are imported.
+
+14. New releases on a 390 px phone: no element wider than the screen, switch labels visible as text, "Listen now" is the automatic default when something is playable.
+15. A YouTube track plays in the visible embed (fake `YT.Player`): at least 200 × 200 px, nothing covering its corners or centre, above the phone's bottom bar, notifications kept clear of it; pause / resume / next go to the embed; closing pauses; a local file hands playback back to the audio engine.
+16. YouTube is opt-in: no request to any YouTube or Google host before it is turned on.
 
 ## Methodology notes
 

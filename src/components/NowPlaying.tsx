@@ -60,6 +60,7 @@ export function NowPlaying() {
           <div className="flex flex-wrap items-center gap-2"><AvailabilityBadge value={track.availability} /><span className="text-muted">via {sourceName(track.source)}</span></div>
           {track.license && <div className="text-muted">Licence: {track.licenseUrl ? <a className="underline" href={track.licenseUrl} target="_blank" rel="noopener noreferrer">{track.license}</a> : track.license}</div>}
           {track.releaseDate && <div className="text-muted">Released: {formatDate(track.releaseDate)}</div>}
+          {mode === 'embed' && <div className="text-amber-500">This song plays in YouTube’s own player (shown on screen). The equaliser, visualiser, crossfade and speed can’t be applied to it.</div>}
           {mode === 'bypass' && <div className="text-amber-500">This source doesn’t permit audio analysis, so EQ and the visualiser can’t be applied.</div>}
           {track.sourceUrl && <a href={track.sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-accent hover:underline"><ExternalLink size={14} />Open original source</a>}
         </div>

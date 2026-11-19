@@ -7,6 +7,7 @@ An honest list of what is unverified, unfinished or inherently limited. If you f
 | Item | Status |
 |---|---|
 | Jamendo, Wikimedia Commons and MusicBrainz live responses | Adapters were written from public API documentation and tested with fixtures. The build environment could not reach these hosts. A mismatch would show up as empty results and a red status in Settings → Music sources. |
+| YouTube source | Never run against the live YouTube Data API or the live IFrame player. Tests use a fixture and a fake player. Known risks: browsers blocking autoplay (OpenSong then asks you to press play on YouTube's player), the production Content-Security-Policy needing another YouTube host than the three listed in `vite.config.ts`, videos that can't be embedded, and the free quota running out. |
 | ListenBrainz and Internet Archive | Response shapes were compared with real responses, but the adapters have not been run from a browser against the live services (including whether their endpoints answer cross-origin requests from a deployed page). |
 | CORS on audio hosts | The equaliser and visualiser need the audio host to send CORS headers. When it does not, OpenSong falls back to plain playback and says so. Which hosts do and do not is unknown until tested live. |
 | Lock-screen / background playback | The Media Session API is wired and the engine keeps persistent elements, but this was not tried on real iOS or Android devices. |
@@ -25,7 +26,9 @@ An honest list of what is unverified, unfinished or inherently limited. If you f
 - **Metadata-only sources never play.** The **Preview** availability exists in the model for sources that offer short samples, but no current provider returns one.
 - **Third-party audio is never cached offline.** Providers have not granted that permission, so offline playback is limited to your own library.
 - **M3U import** keeps remote URLs as non-playable external entries, because their rights cannot be verified.
-- **Backups exclude audio files** and the Jamendo client ID.
+- **Backups exclude audio files** and your API keys (Jamendo, YouTube).
+- **YouTube songs** play only in YouTube's visible player: no equaliser, visualiser, crossfade or speed control, and playback normally stops when the screen locks or the tab is hidden. They are "free to listen" through YouTube's embed, not openly licensed music, and YouTube may show ads inside its own player; OpenSong cannot remove them and does not try.
+- Modal dialogs and the queue drawer can still sit on top of YouTube's player; close them to see it.
 - **Loudness** is an equal-loudness style lift for quiet listening; it is not ReplayGain / loudness normalisation across tracks.
 
 ## Audio

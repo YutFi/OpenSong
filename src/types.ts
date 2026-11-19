@@ -26,6 +26,8 @@ export interface Track {
   license?: string
   licenseUrl?: string
   releaseDate?: string
+  /** YouTube video id: played through YouTube's official embedded player (no audio file access). */
+  youtubeId?: string
   /** Some providers need an extra call to find the audio file (Internet Archive). */
   needsResolve?: boolean
   /** Local-only: key into the `blobs` table. */

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { engine, type EngineMode } from '../audio/engine'
+import { yt, useYT } from '../audio/ytPlayer'
 import { db } from '../lib/db'
 import { recordRecent } from '../lib/recent'
 import { providerContext } from '../lib/providerCtx'
@@ -20,7 +21,7 @@ interface PlayerStore {
   duration: number
   shuffle: boolean
   repeat: RepeatMode
-  mode: EngineMode
+  mode: EngineMode | 'embed'
   loadedId?: string
   error?: string
   /** Increments whenever the history table changes (lets pages refresh). */
@@ -100,6 +101,9 @@ function saveSession(get: () => PlayerStore) {
 
 export const usePlayer = create<PlayerStore>((set, get) => {
   const toast = (m: string, k: 'info' | 'error' = 'info') => useUI.getState().toast(m, k)
+  /** YouTube tracks play in YouTube's own embedded player; everything else goes through the Web Audio engine. */
+  const be = () => (get().queue[get().index]?.youtubeId ? yt : engine)
+  let ytFails = 0
 
   async function resolveUrl(track: Track): Promise<{ url: string; local: boolean }> {
     if (objectUrl) { URL.revokeObjectURL(objectUrl); objectUrl = undefined }
@@ -129,6 +133,18 @@ export const usePlayer = create<PlayerStore>((set, get) => {
     set({ index, status: 'loading', error: undefined, position: o.startAt ?? 0, duration: track.duration ?? 0, loadedId: undefined })
     try {
       if (!isPlayable(track)) throw new Error(track.availability === 'metadata' ? 'Metadata only — no playable source.' : 'Not playable here.')
+      if (track.youtubeId) {
+        engine.pause()
+        useYT.setState({ visible: true })
+        await new Promise<void>((r) => requestAnimationFrame(() => r())) // let the player area mount at full size
+        await yt.load(track.youtubeId, { autoplay: o.autoplay !== false, startAt: o.startAt })
+        if (seq !== loadSeq) return
+        sess = { trackId: track.id, started: Date.now(), listened: 0, lastT: o.startAt ?? 0, track, flushedAt: Date.now() }
+        void recordRecent(track)
+        set({ mode: 'embed', loadedId: track.id, status: o.autoplay === false ? 'paused' : 'playing', duration: yt.duration || track.duration || 0 })
+        return
+      }
+      yt.stop(); useYT.setState({ visible: false })
       const { url, local } = await resolveUrl(track)
       if (seq !== loadSeq) return
       const st = useSettings.getState()
@@ -155,30 +171,45 @@ export const usePlayer = create<PlayerStore>((set, get) => {
     const n = nextIndex(queue.length, index, repeat, auto)
     if (n == null) {
       await persistSession(true, 'end')
-      engine.pause()
+      be().pause()
       set({ status: 'paused' })
-      engine.seek(0)
+      be().seek(0)
       return
     }
-    if (n === index && auto) { engine.seek(0); await engine.play().catch(() => undefined); if (sess) { void persistSession(true, 'end'); sess = { trackId: queue[index].id, started: Date.now(), listened: 0, lastT: 0, track: queue[index], flushedAt: Date.now() } } return }
+    if (n === index && auto) { be().seek(0); await be().play().catch(() => undefined); if (sess) { void persistSession(true, 'end'); sess = { trackId: queue[index].id, started: Date.now(), listened: 0, lastT: 0, track: queue[index], flushedAt: Date.now() } } return }
     await loadAt(n, { autoplay: true, auto, fade: auto ? fade : 0 })
   }
 
-  engine.events = {
-    time: (t, d) => {
+  const common = {
+    time: (t: number, d: number) => {
       trackTime(t)
-      set({ position: t, duration: Number.isFinite(d) ? d : get().duration })
+      set({ position: t, duration: Number.isFinite(d) && d > 0 ? d : get().duration })
       if (Date.now() - lastSave > 5000) { lastSave = Date.now(); saveSession(get) }
     },
     ended: () => void advance(true),
+    play: () => { ytFails = 0; set({ status: 'playing' }) },
+    pause: () => { if (get().status !== 'loading') set({ status: 'paused' }); saveSession(get); void persistSession(false) },
+  }
+  yt.events = {
+    ...common,
+    error: (m) => {
+      set({ status: 'error', error: m })
+      toast(`YouTube: ${m}`, 'error')
+      // Skip unplayable videos, but never loop forever if everything fails.
+      if (++ytFails < 3) void advance(true)
+    },
+    blocked: () => {
+      if (get().status === 'playing') { set({ status: 'paused' }); toast('Your browser blocked autoplay — press play on the YouTube player.') }
+    },
+  }
+  engine.events = {
+    ...common,
     nearEnd: () => {
       const { repeat, queue, index } = get()
       if (repeat === 'one') return
       if (nextIndex(queue.length, index, repeat, true) == null) return
       void advance(true, useSettings.getState().crossfade)
     },
-    play: () => set({ status: 'playing' }),
-    pause: () => { if (get().status !== 'loading') set({ status: 'paused' }); saveSession(get); void persistSession(false) },
     error: (m) => { set({ status: 'error', error: m }); toast(`Playback error: ${m}`, 'error') },
     mode: (m) => set({ mode: m }),
   }
@@ -250,7 +281,7 @@ export const usePlayer = create<PlayerStore>((set, get) => {
       const r = removeAt(queue, index, i)
       set({ queue: r.queue, index: Math.max(0, r.index) })
       if (r.removedCurrent) {
-        if (!r.queue.length) { engine.stop(); set({ status: 'idle', loadedId: undefined }) }
+        if (!r.queue.length) { engine.stop(); yt.stop(); useYT.setState({ visible: false }); set({ status: 'idle', loadedId: undefined }) }
         else void loadAt(r.index, { autoplay: get().status === 'playing' })
       }
     },
@@ -270,20 +301,21 @@ export const usePlayer = create<PlayerStore>((set, get) => {
       const { status, queue, index, loadedId, position } = get()
       if (!queue.length) return
       engine.ensureContext()
-      if (status === 'playing') { engine.pause(); return }
+      if (status === 'playing') { be().pause(); return }
       if (loadedId !== queue[index]?.id) { await loadAt(index, { autoplay: true, startAt: position > 2 ? position : undefined }); return }
-      try { await engine.play() } catch (e) { toast(e instanceof Error ? e.message : 'Could not start playback', 'error') }
+      if (queue[index]?.youtubeId) useYT.setState({ visible: true })
+      try { await be().play() } catch (e) { toast(e instanceof Error ? e.message : 'Could not start playback', 'error') }
     },
     next: async () => { engine.ensureContext(); await advance(false) },
     prev: async () => {
       const { queue, index, repeat } = get()
       engine.ensureContext()
-      if (get().position > 3) { engine.seek(0); return }
+      if (get().position > 3) { be().seek(0); return }
       const p = prevIndex(queue.length, index, repeat)
-      if (p == null) { engine.seek(0); return }
+      if (p == null) { be().seek(0); return }
       await loadAt(p, { autoplay: true })
     },
-    seek: (t) => { engine.seek(t); if (sess) sess.lastT = t; set({ position: t }) },
+    seek: (t) => { be().seek(t); if (sess) sess.lastT = t; set({ position: t }) },
     seekBy: (d) => get().seek(Math.min(Math.max(0, get().position + d), get().duration || Infinity)),
 
     toggleShuffle: () => {
@@ -297,11 +329,11 @@ export const usePlayer = create<PlayerStore>((set, get) => {
       }
     },
     cycleRepeat: () => set({ repeat: ({ off: 'all', all: 'one', one: 'off' } as const)[get().repeat] }),
-    setVolume: (v) => { engine.setVolume(v); useSettings.getState().set({ volume: v, muted: false }) },
+    setVolume: (v) => { engine.setVolume(v); yt.setVolume(v); useSettings.getState().set({ volume: v, muted: false }) },
     toggleMute: () => {
       const s = useSettings.getState()
       const muted = !s.muted
-      engine.setVolume(muted ? 0 : s.volume)
+      engine.setVolume(muted ? 0 : s.volume); yt.setVolume(muted ? 0 : s.volume)
       s.set({ muted })
     },
   }
@@ -311,6 +343,7 @@ export const usePlayer = create<PlayerStore>((set, get) => {
 export function initEngineFromSettings() {
   const s = useSettings.getState()
   engine.setVolume(s.muted ? 0 : s.volume)
+  yt.setVolume(s.muted ? 0 : s.volume)
   engine.setRate(s.speed)
   engine.setCrossfade(s.crossfade)
 }

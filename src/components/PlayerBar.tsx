@@ -86,6 +86,7 @@ export function PlayerBar() {
           <div className="min-w-0">
             <div className="truncate text-sm font-semibold" data-testid="player-title">{track.title}</div>
             <Link to={`/artist/${encodeURIComponent(track.artist)}`} className="block truncate text-xs text-muted hover:text-fg hover:underline">{track.artist}</Link>
+            {mode === 'embed' && <div className="truncate text-[10px] text-amber-500" title="Plays in YouTube’s own player, so the equaliser and visualiser can’t be applied.">YouTube player · no EQ</div>}
             {mode === 'bypass' && <div className="truncate text-[10px] text-amber-500" title="This source blocks audio analysis, so the equaliser and visualiser can’t be applied.">No EQ for this source</div>}
           </div>
           <IconButton label={fav ? 'Remove from favourites' : 'Add to favourites'} active={fav} onClick={() => void toggleFavourite(track)}><Heart size={18} fill={fav ? 'currentColor' : 'none'} /></IconButton>

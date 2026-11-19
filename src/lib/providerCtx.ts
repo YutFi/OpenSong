@@ -6,7 +6,7 @@ export function providerContext(signal?: AbortSignal): ProviderContext {
   const s = useSettings.getState()
   return {
     signal,
-    settings: { jamendoClientId: s.jamendoClientId.trim() || undefined, jamendoFormat: s.jamendoFormat, archiveFormat: s.archiveFormat },
+    settings: { jamendoClientId: s.jamendoClientId.trim() || undefined, youtubeApiKey: s.youtubeApiKey.trim() || undefined, youtubeRegion: s.youtubeRegion, jamendoFormat: s.jamendoFormat, archiveFormat: s.archiveFormat },
   }
 }
 

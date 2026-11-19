@@ -4,6 +4,10 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ## [Unreleased]
 
+### Added
+- Optional YouTube source (off by default, your own free Google API key): popular music chart and search, played in YouTube's official visible embedded player. No audio extraction. Equaliser, visualiser, crossfade, speed and background play do not apply to these songs. Catalogue entries from YouTube are removed after 30 days.
+- "Listen now" shelf on Home with recent releases you can play.
+
 ### Fixed
 - New releases on phones: the four filter dropdowns no longer run off the right edge (2×2 grid), and switches now show visible labels (also the Equaliser "on" switch).
 

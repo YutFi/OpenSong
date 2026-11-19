@@ -12,6 +12,8 @@ export interface FetchOptions {
   signal?: AbortSignal
   timeoutMs?: number
   headers?: Record<string, string>
+  /** Used instead of the URL as the cache key — keeps API keys out of the stored cache. */
+  cacheId?: string
 }
 
 /** Per-provider polite request queue: one in flight at a time with a minimum interval. */
@@ -81,7 +83,7 @@ async function rawFetch(url: string, opts: FetchOptions): Promise<unknown> {
  */
 export async function fetchJson<T = unknown>(url: string, opts: FetchOptions): Promise<T> {
   const ttl = opts.cacheTtl ?? 0
-  const cacheKey = `${opts.provider}:${url}`
+  const cacheKey = `${opts.provider}:${opts.cacheId ?? url}`
   if (ttl > 0) {
     const hit = await db.apiCache.get(cacheKey).catch(() => undefined)
     if (hit && hit.expires > Date.now()) return hit.value as T

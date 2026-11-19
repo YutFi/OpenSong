@@ -11,6 +11,8 @@ export const INTERVALS = { new: 6 * 3600_000, trending: 12 * 3600_000, maintenan
 const FIRST_RUN_DAYS = 14
 const MAX_PAGES = 3
 const KEEP_DAYS = 60
+/** YouTube API data is refreshed or removed within 30 days. */
+const KEEP_DAYS_YOUTUBE = 30
 
 export interface SyncReport {
   at: number
@@ -81,6 +83,9 @@ export async function maintenance(now = Date.now()) {
   const follows = new Set((await db.follows.toArray()).map((f) => norm(f.name)))
   const old = await db.catalog.where('lastSeenAt').below(cutoff).toArray()
   await db.catalog.bulkDelete(old.filter((r) => !follows.has(norm(r.artist))).map((r) => r.id))
+  const ytCutoff = now - KEEP_DAYS_YOUTUBE * 86400_000
+  const ytOld = await db.catalog.where('lastSeenAt').below(ytCutoff).filter((r) => r.source === 'youtube').primaryKeys()
+  await db.catalog.bulkDelete(ytOld)
   await db.apiCache.where('expires').below(now).delete()
   await setMeta('sync:maintenance', now)
 }

@@ -21,8 +21,9 @@ export function sanitizeTrack(raw: unknown): Track | undefined {
   t.artworkUrl = safeUrl(r.artworkUrl); t.streamUrl = safeUrl(r.streamUrl); t.sourceUrl = safeUrl(r.sourceUrl); t.licenseUrl = safeUrl(r.licenseUrl)
   t.blobKey = str(r.blobKey, 200); t.artworkBlobKey = str(r.artworkBlobKey, 200); t.fileKey = str(r.fileKey, 200); t.fileName = str(r.fileName, 300)
   if (r.needsResolve === true) t.needsResolve = true
+  if (typeof r.youtubeId === 'string' && /^[\w-]{11}$/.test(r.youtubeId)) t.youtubeId = r.youtubeId
   // Remote tracks without a URL can never be "full"; downgrade rather than trust the file.
-  if ((availability === 'full' || availability === 'preview') && !t.streamUrl && !t.needsResolve) t.availability = t.sourceUrl ? 'external' : 'metadata'
+  if ((availability === 'full' || availability === 'preview') && !t.streamUrl && !t.needsResolve && !t.youtubeId) t.availability = t.sourceUrl ? 'external' : 'metadata'
   if (availability === 'local' && !t.blobKey) t.availability = 'metadata'
   return t
 }

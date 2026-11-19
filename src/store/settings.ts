@@ -55,6 +55,9 @@ export interface Settings {
   accent: string
   providers: Record<string, boolean>
   jamendoClientId: string
+  /** Your own free Google API key (YouTube Data API v3). Stays in this browser. */
+  youtubeApiKey: string
+  youtubeRegion: string
   jamendoFormat: 'mp31' | 'mp32' | 'ogg' | 'flac'
   archiveFormat: 'mp3' | 'ogg'
   recommendations: boolean
@@ -87,8 +90,9 @@ const envKey = (import.meta.env.VITE_JAMENDO_CLIENT_ID as string | undefined) ??
 
 export const DEFAULT_SETTINGS: Settings = {
   theme: 'dark', accent: '#ff6a3d',
-  providers: { jamendo: true, archive: true, commons: true, listenbrainz: true, musicbrainz: true },
+  providers: { jamendo: true, archive: true, commons: true, listenbrainz: true, musicbrainz: true, youtube: false },
   jamendoClientId: envKey,
+  youtubeApiKey: '', youtubeRegion: 'US',
   jamendoFormat: 'mp32', archiveFormat: 'mp3',
   recommendations: true, recordHistory: true,
   crossfade: 0, speed: 1, resumeSession: true, bypassProcessing: false,

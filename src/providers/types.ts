@@ -19,6 +19,9 @@ export interface SearchResults {
 
 export interface ProviderSettings {
   jamendoClientId?: string
+  youtubeApiKey?: string
+  /** ISO 3166-1 alpha-2 region for the YouTube music chart. */
+  youtubeRegion?: string
   /** Jamendo stream format. */
   jamendoFormat: 'mp31' | 'mp32' | 'ogg' | 'flac'
   /** Internet Archive: prefer MP3 (widest support) or Ogg Vorbis. */

@@ -13,6 +13,7 @@ import { Button, Card } from '../components/ui'
 import { useCatalog, useFavourites, useFollows, useHistory, useLibrary, usePlaylists, useTrackIndex } from '../lib/data'
 import { becauseYouListenTo, buildAffinity, discoverNewArtists, favouriteGenres, musicMix, recommendForYou, type Candidate } from '../lib/recommend'
 import { isPlayable } from '../lib/queueLogic'
+import { canPlayRelease } from '../lib/playback'
 import { norm, timeAgo } from '../lib/util'
 import { usePlayer } from '../store/player'
 import { useSettings } from '../store/settings'
@@ -30,6 +31,7 @@ export default function Home() {
   const [index] = useTrackIndex()
   const recsOn = useSettings((s) => s.recommendations)
   const hasKey = useSettings((s) => !!s.jamendoClientId.trim() && s.providers.jamendo !== false)
+  const hasYT = useSettings((s) => s.providers.youtube === true && !!s.youtubeApiKey.trim())
   const syncing = useSync((s) => s.running)
   const last = useSync((s) => s.last)
   const cur = usePlayer((s) => s.queue[s.index])
@@ -68,6 +70,7 @@ export default function Home() {
   }, [history, index])
 
   const latest = useMemo(() => (catalog ?? []).filter((r) => matchesWindow(r, 'month', now) || !r.releaseDate).sort(byRecent).slice(0, 16), [catalog, now])
+  const listenNow = useMemo(() => (catalog ?? []).filter((r) => canPlayRelease(r) && (matchesWindow(r, 'month', now) || !r.releaseDate)).sort(byRecent).slice(0, 16), [catalog, now])
   const trending = useMemo(() => (catalog ?? []).filter((r) => r.trending).sort((a, b) => (b.listenCount ?? 0) - (a.listenCount ?? 0)).slice(0, 16), [catalog])
   const indie = useMemo(() => {
     const by = new Map<string, { name: string; art?: string; n: number; score: number }>()
@@ -111,6 +114,14 @@ export default function Home() {
         </Card>
       )}
 
+      {!hasYT && (
+        <Card className="flex flex-wrap items-center gap-3 text-sm">
+          <Play size={18} className="shrink-0 text-accent" />
+          <span className="min-w-0 flex-1">Want today’s popular songs too? Optionally add your own free YouTube key to hear them in YouTube’s official player. It’s off by default and has a few limits.</span>
+          <Link to="/settings" className="font-semibold text-accent hover:underline">Learn more</Link>
+        </Card>
+      )}
+
       {resume && (
         <Section title="Continue listening">
           <Card className="flex items-center gap-4">
@@ -131,6 +142,12 @@ export default function Home() {
       {recsOn && recs.length > 0 && (
         <Section title="Recommended for you" subtitle="Picked on this device from what you play, favourite and follow. Every pick says why.">
           <Shelf>{recs.map((r) => <ReleaseCard key={r.release!.id} release={r.release!} note={r.reasons[0]} />)}</Shelf>
+        </Section>
+      )}
+
+      {listenNow.length > 0 && (
+        <Section title="Listen now" subtitle="Recent releases you can play right here" to="/new">
+          <Shelf>{listenNow.map((r) => <ReleaseCard key={r.id} release={r} />)}</Shelf>
         </Section>
       )}
 

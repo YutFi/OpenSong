@@ -39,7 +39,8 @@ export function Visualizer({ mode, settings, className, artwork }: { mode?: VizM
       const dt = Math.min(0.1, (now - last) / 1000); last = now
       const an = engine.analyser
       let note = ''
-      if (usePlayer.getState().mode === 'bypass' && usePlayer.getState().status !== 'idle') note = 'This source doesn’t allow audio analysis, so the visualiser can’t react to it. Local files and most streams work.'
+      if (usePlayer.getState().mode === 'embed' && usePlayer.getState().status !== 'idle') note = 'This song plays in YouTube’s own player, which doesn’t allow audio analysis, so the visualiser can’t react to it.'
+      else if (usePlayer.getState().mode === 'bypass' && usePlayer.getState().status !== 'idle') note = 'This source doesn’t allow audio analysis, so the visualiser can’t react to it. Local files and most streams work.'
       else if (!an) note = 'Press play to start the visualiser.'
       if (msg.current) msg.current.textContent = note
       if (!an || note) { ctx.fillStyle = s.background; ctx.clearRect(0, 0, cv.width, cv.height); if (s.backgroundEffect !== 'artwork') ctx.fillRect(0, 0, cv.width, cv.height); return }

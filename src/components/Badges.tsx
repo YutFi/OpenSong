@@ -15,6 +15,6 @@ export function AvailabilityBadge({ value, className }: { value: Availability; c
 }
 
 export const SOURCE_NAMES: Record<string, string> = {
-  jamendo: 'Jamendo', archive: 'Internet Archive', commons: 'Wikimedia Commons', listenbrainz: 'ListenBrainz', musicbrainz: 'MusicBrainz', local: 'This device', url: 'Web link',
+  jamendo: 'Jamendo', archive: 'Internet Archive', commons: 'Wikimedia Commons', listenbrainz: 'ListenBrainz', musicbrainz: 'MusicBrainz', youtube: 'YouTube', local: 'This device', url: 'Web link',
 }
 export const sourceName = (id: string) => SOURCE_NAMES[id] ?? id

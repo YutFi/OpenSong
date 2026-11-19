@@ -8,12 +8,13 @@ import { defineConfig, type Plugin } from 'vite'
 // GitHub Pages cannot set HTTP headers, so a <meta> policy is the portable option.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self'",
+  "script-src 'self' https://www.youtube.com https://s.ytimg.com",
+  "frame-src https://www.youtube.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "media-src 'self' blob: https:",
   "font-src 'self'",
-  'connect-src \'self\' https://musicbrainz.org https://api.listenbrainz.org https://api.jamendo.com https://archive.org https://*.archive.org https://commons.wikimedia.org https://coverartarchive.org',
+  'connect-src \'self\' https://musicbrainz.org https://api.listenbrainz.org https://api.jamendo.com https://archive.org https://*.archive.org https://commons.wikimedia.org https://coverartarchive.org https://www.googleapis.com',
   "worker-src 'self'",
   "manifest-src 'self'",
   "object-src 'none'",

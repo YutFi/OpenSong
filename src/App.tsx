@@ -10,6 +10,7 @@ import { PlayerBar } from './components/PlayerBar'
 import { QueueDrawer } from './components/QueueDrawer'
 import { Sidebar } from './components/Sidebar'
 import { Toaster } from './components/Toaster'
+import { YouTubeStage } from './components/YouTubeStage'
 import { Button, Modal, Skeleton } from './components/ui'
 import { startAutoSync } from './catalog/sync'
 import { SHORTCUTS, useShortcuts } from './lib/useShortcuts'
@@ -134,6 +135,7 @@ export default function App() {
       <PlayerBar />
       <MobileNav />
       <NowPlaying />
+      <YouTubeStage />
       <QueueDrawer />
       <AddToPlaylistDialog />
       <Toaster />

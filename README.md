@@ -3,7 +3,7 @@
 **Free, open-source music streaming and discovery that lives in your browser.**
 No accounts. No ads. No subscription. No servers of ours. Your library, playlists and listening history never leave your device.
 
-OpenSong plays music that is *legally free to stream*: Creative Commons and public-domain recordings from [Jamendo](https://www.jamendo.com), the [Internet Archive](https://archive.org) and [Wikimedia Commons](https://commons.wikimedia.org), plus any audio files you own. It discovers new releases through the open [MusicBrainz](https://musicbrainz.org) and [ListenBrainz](https://listenbrainz.org) projects, and gives you a serious equaliser, a real-time visualiser, playlists, recommendations and listening statistics, all computed locally.
+OpenSong plays music that is *legally free to stream*: Creative Commons and public-domain recordings from [Jamendo](https://www.jamendo.com), the [Internet Archive](https://archive.org) and [Wikimedia Commons](https://commons.wikimedia.org), plus any audio files you own. Optionally, you can add your own free YouTube key to hear today's popular songs in YouTube's official player. Those songs are free to listen to, not openly licensed, and come with limits (see below). It discovers new releases through the open [MusicBrainz](https://musicbrainz.org) and [ListenBrainz](https://listenbrainz.org) projects, and gives you a serious equaliser, a real-time visualiser, playlists, recommendations and listening statistics, all computed locally.
 
 > **What OpenSong is not.** It is not a way to listen to Spotify, YouTube, Apple Music or other commercial catalogues, and it never will be: it does not scrape them, bypass DRM, or rip audio. If a release is only known as metadata, OpenSong says so and shows no play button. *Knowing a release exists never implies the right to stream it.*
 
@@ -42,6 +42,7 @@ OpenSong is early software. This is what has actually been checked, and how.
 **Not verified.** Please read [docs/KNOWN_LIMITATIONS.md](docs/KNOWN_LIMITATIONS.md) before relying on these:
 
 - **Live responses from Jamendo, Wikimedia Commons and MusicBrainz.** Those adapters are tested against fixtures built from the documented response shapes. The ListenBrainz and Internet Archive shapes were compared with real responses, but none of the five has been run end to end from a browser against the live service.
+- **YouTube.** Not run against the live API or the live player; tests use a fixture and a fake player. See [docs/PROVIDERS.md](docs/PROVIDERS.md).
 - Whether each remote audio host sends the CORS headers the equaliser and visualiser need. When one does not, OpenSong plays the stream unprocessed and says so.
 - Lock-screen and background playback on real iOS and Android devices.
 - Firefox and Safari (only Chrome was tested).
@@ -86,14 +87,16 @@ Fork the repo, set **Settings → Pages → Source** to **GitHub Actions**, and 
 | Wikimedia Commons | Freely licensed recordings | Full streams | None |
 | ListenBrainz | Fresh releases, community trends | Metadata only | None |
 | MusicBrainz | Artist and album encyclopedia | Metadata only | None |
+| YouTube (optional, off by default) | Popular music chart for your region | Plays in YouTube's own visible player: no equaliser, visualiser or background play | Your own free Google API key |
 
 Each track shows its licence and a link back to its source. Rate limits and the rules for adding a source are in [docs/PROVIDERS.md](docs/PROVIDERS.md).
 
 ## Privacy
 
-- No accounts, analytics, ads, cookies or telemetry. OpenSong has no backend.
+- No accounts, analytics, ads, cookies or telemetry in OpenSong itself, and no backend. (YouTube's player, if you opt in, is separate; see below.)
 - Your history, favourites, playlists, library and settings live in your browser (IndexedDB and localStorage).
 - Search words and artist names you look up are sent to the sources you have enabled. Settings → Privacy lists exactly which hosts are contacted.
+- Only if you turn on the optional YouTube source and play a YouTube song: YouTube's own player loads from Google servers and may set its own cookies. OpenSong itself sets none.
 - A strict Content-Security-Policy limits the production build to those hosts.
 
 ## Tech

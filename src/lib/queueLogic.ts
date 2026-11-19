@@ -56,4 +56,4 @@ export function removeAt(queue: Track[], index: number, i: number): { queue: Tra
 }
 
 export const isPlayable = (t: Track | undefined): boolean =>
-  !!t && (t.availability === 'local' ? !!t.blobKey : (t.availability === 'full' || t.availability === 'preview') && (!!t.streamUrl || !!t.needsResolve))
+  !!t && (t.availability === 'local' ? !!t.blobKey : (t.availability === 'full' || t.availability === 'preview') && (!!t.streamUrl || !!t.needsResolve || !!t.youtubeId))

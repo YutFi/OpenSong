@@ -53,8 +53,8 @@ export default function Equaliser() {
         <Button size="sm" onClick={resetEq}><RotateCcw size={14} />Reset</Button>
       </>} />
 
-      {(bypass || mode === 'bypass') && (
-        <Card className="flex items-start gap-3 text-sm"><Info size={18} className="mt-0.5 shrink-0 text-accent" /><p className="text-muted">{bypass ? 'Processing is bypassed in Settings, so the equaliser has no effect on online streams.' : 'The current online stream doesn’t permit audio processing (browser CORS rules), so it’s playing without the equaliser. Your own files and most Creative Commons streams are unaffected.'}</p></Card>
+      {(bypass || mode === 'bypass' || mode === 'embed') && (
+        <Card className="flex items-start gap-3 text-sm"><Info size={18} className="mt-0.5 shrink-0 text-accent" /><p className="text-muted">{mode === 'embed' ? 'The current song plays in YouTube’s own player, which doesn’t allow audio processing, so the equaliser can’t change it. Songs from other sources and your own files are unaffected.' : bypass ? 'Processing is bypassed in Settings, so the equaliser has no effect on online streams.' : 'The current online stream doesn’t permit audio processing (browser CORS rules), so it’s playing without the equaliser. Your own files and most Creative Commons streams are unaffected.'}</p></Card>
       )}
 
       <Card className="space-y-4">

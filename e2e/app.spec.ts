@@ -209,6 +209,109 @@ test('New releases on a phone: filters fit the screen, switches have visible lab
   await page.screenshot({ path: 'e2e/shots/mobile-new-releases.png', fullPage: false })
 })
 
+/** A stand-in for YouTube's IFrame API (the real one can't be reached from the test environment). It follows the documented surface only. */
+const FAKE_YT = () => {
+  const w = window as any
+  w.__yt = { created: [] as any[], calls: [] as string[], vol: [] as number[] }
+  w.YT = {
+    Player: class {
+      o: any; vid: string; t = 0; frame: HTMLIFrameElement
+      constructor(el: HTMLElement, o: any) {
+        this.o = o; this.vid = o.videoId
+        this.frame = document.createElement('iframe'); this.frame.title = 'fake youtube'; this.frame.style.cssText = 'width:100%;height:100%;border:0;display:block'
+        el.replaceWith(this.frame)
+        w.__yt.created.push({ videoId: o.videoId, playerVars: o.playerVars, width: o.width, height: o.height })
+        setTimeout(() => { o.events.onReady(); if (o.playerVars.autoplay) this.state(1) }, 30)
+        setInterval(() => { if (this.playing) this.t += 0.5 }, 500)
+      }
+      playing = false
+      state(n: number) { this.playing = n === 1; this.o.events.onStateChange({ data: n }) }
+      loadVideoById(a: any) { this.vid = a.videoId; this.t = a.startSeconds ?? 0; w.__yt.calls.push('load:' + a.videoId); this.state(1) }
+      cueVideoById(a: any) { this.vid = a.videoId; w.__yt.calls.push('cue:' + a.videoId); this.state(5) }
+      playVideo() { w.__yt.calls.push('play'); this.state(1) }
+      pauseVideo() { w.__yt.calls.push('pause'); this.state(2) }
+      seekTo(t: number) { w.__yt.calls.push('seek:' + t); this.t = t }
+      getCurrentTime() { return this.t }
+      getDuration() { return 205 }
+      setVolume(v: number) { w.__yt.vol.push(v) }
+    },
+  }
+}
+const ytTrack = (id: string, title: string) => ({ id: `youtube:${id}`, title, artist: 'Fixture Artist', source: 'youtube', sourceId: id, youtubeId: id, availability: 'full', duration: 205, sourceUrl: `https://www.youtube.com/watch?v=${id}` })
+
+test('YouTube track plays in the visible official embed; audio engine and embed hand over cleanly', async ({ page }) => {
+  await page.addInitScript(FAKE_YT)
+  await page.setViewportSize({ width: 390, height: 844 })
+  await importTone(page)
+  const pageErrors: string[] = []
+  page.on('pageerror', (e) => pageErrors.push(e.message))
+
+  await page.evaluate((tracks) => (window as any).__opensong.usePlayer.getState().playQueue(tracks, 0), [ytTrack('aaaaaaaaaaa', 'YT Song One'), ytTrack('bbbbbbbbbbb', 'YT Song Two')])
+  const stage = page.getByTestId('yt-stage')
+  await expect(stage).toBeVisible()
+  await page.waitForFunction(() => (window as any).__opensong.usePlayer.getState().status === 'playing')
+  expect(await page.evaluate(() => (window as any).__yt.created[0])).toMatchObject({ videoId: 'aaaaaaaaaaa', playerVars: { autoplay: 1, playsinline: 1 } })
+  expect(await page.evaluate(() => (window as any).__opensong.usePlayer.getState().mode)).toBe('embed')
+
+  // YouTube's rules: ≥200×200 and nothing drawn over the player.
+  const geo = await page.evaluate(() => {
+    const f = document.querySelector('iframe[title="fake youtube"]') as HTMLElement
+    const r = f.getBoundingClientRect()
+    const hit = (x: number, y: number) => document.elementFromPoint(x, y)
+    const pts = [[r.left + 2, r.top + 2], [r.right - 2, r.top + 2], [r.left + 2, r.bottom - 2], [r.right - 2, r.bottom - 2], [r.left + r.width / 2, r.top + r.height / 2]]
+    const nav = [...document.querySelectorAll('nav[aria-label="Main"]')].map((e) => e.getBoundingClientRect()).find((r) => r.width > 0)!
+    const title = [...document.querySelectorAll('button[aria-label="Open now playing"]')].map((e) => e.closest('.fixed')?.getBoundingClientRect()).find((r) => r && r.width > 0)!
+    return { w: r.width, h: r.height, covered: pts.filter(([x, y]) => hit(x, y) !== f).length, right: r.right, vw: innerWidth, bottom: r.bottom, barTop: Math.min(nav.top, title.top) }
+  })
+  expect(geo.w).toBeGreaterThanOrEqual(200); expect(geo.h).toBeGreaterThanOrEqual(200)
+  expect(geo.covered).toBe(0)
+  expect(geo.right).toBeLessThanOrEqual(geo.vw)
+  expect(geo.bottom).toBeLessThanOrEqual(geo.barTop)
+  await page.evaluate(() => (window as any).__opensong.usePlayer.getState().enqueue([{ id: 'x:1', title: 'Queued', artist: 'A', source: 'youtube', youtubeId: 'ccccccccccc', availability: 'full' }]))
+  await expect(page.getByRole('status').getByText(/Added 1 to queue/)).toBeVisible()
+  const toastClear = await page.evaluate(() => {
+    const f = document.querySelector('iframe[title="fake youtube"]')!.getBoundingClientRect()
+    const t = [...document.querySelectorAll('[role="status"] button')].map((e) => e.getBoundingClientRect())
+    return t.every((r) => r.bottom <= f.top || r.top >= f.bottom)
+  })
+  expect(toastClear).toBe(true) // notifications never cover the YouTube player
+  await page.screenshot({ path: 'e2e/shots/mobile-youtube.png' })
+
+  // progress comes from the embed
+  await page.waitForFunction(() => (window as any).__opensong.usePlayer.getState().position > 0.4, null, { timeout: 8000 })
+  // pause / resume go to the embed, not the audio engine
+  await page.evaluate(() => (window as any).__opensong.usePlayer.getState().toggle())
+  await page.waitForFunction(() => (window as any).__opensong.usePlayer.getState().status === 'paused')
+  expect(await page.evaluate(() => (window as any).__yt.calls.includes('pause'))).toBe(true)
+  await page.evaluate(() => (window as any).__opensong.usePlayer.getState().toggle())
+  await page.waitForFunction(() => (window as any).__opensong.usePlayer.getState().status === 'playing')
+  // next → second video loaded in the SAME player
+  await page.evaluate(() => (window as any).__opensong.usePlayer.getState().next())
+  await page.waitForFunction(() => (window as any).__yt.calls.includes('load:bbbbbbbbbbb'))
+  expect(await page.evaluate(() => (window as any).__yt.created.length)).toBe(1)
+  // closing the player pauses it
+  await page.getByRole('button', { name: /Close YouTube player/ }).click()
+  await expect(stage).toBeHidden()
+  // a local file hands playback back to the Web Audio engine and hides the embed
+  await page.evaluate(() => { const p = (window as any).__opensong.usePlayer.getState(); return p.playQueue(p.queue.slice(0, 0).concat([]), 0) }).catch(() => undefined)
+  await page.goto('/#/library')
+  await play(page)
+  await expect(stage).toBeHidden()
+  expect(await page.evaluate(() => (window as any).__opensong.usePlayer.getState().mode)).toBe('processed')
+  expect(pageErrors).toEqual([])
+})
+
+test('YouTube is opt-in: nothing from YouTube is requested or loaded until a YouTube song is played', async ({ page }) => {
+  const hosts = new Set<string>()
+  page.on('request', (r) => { try { hosts.add(new URL(r.url()).hostname) } catch { /* data: urls */ } })
+  await page.goto('/')
+  await page.waitForTimeout(1500)
+  await page.goto('/#/settings')
+  await expect(page.getByText('YouTube (official player)').first()).toBeVisible()
+  expect([...hosts].filter((h) => /youtube|googleapis|ytimg|google/.test(h))).toEqual([])
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('opensong:settings') ?? '{}').state?.providers?.youtube)).not.toBe(true)
+})
+
 test('production build: no Content-Security-Policy violations while using the app and playing audio', async ({ page }) => {
   const violations: string[] = []
   await page.addInitScript(() => {
