@@ -1,0 +1,34 @@
+name: Propose a music source
+description: Suggest a new free or open source of music or metadata
+labels: [provider]
+body:
+  - type: input
+    id: name
+    attributes:
+      label: Source name and URL
+    validations:
+      required: true
+  - type: textarea
+    id: terms
+    attributes:
+      label: Where do its terms or API licence allow third-party apps to stream or display this?
+      description: Link the exact page. Sources without clear permission cannot be added.
+    validations:
+      required: true
+  - type: dropdown
+    id: access
+    attributes:
+      label: Access
+      options:
+        - No key needed
+        - Free key the user creates themselves
+        - Needs payment or a shared secret (cannot be added)
+    validations:
+      required: true
+  - type: checkboxes
+    id: cors
+    attributes:
+      label: Technical
+      options:
+        - label: The API allows browser (CORS) requests
+        - label: Audio files are served with CORS headers (needed for the equaliser and visualiser on that source)

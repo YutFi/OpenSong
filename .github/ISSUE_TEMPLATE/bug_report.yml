@@ -1,0 +1,41 @@
+name: Bug report
+description: Something doesn't work as described
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what actually happened?
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and device
+      placeholder: "Chrome 150 on Android 15, Safari on iPhone 15, ..."
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where did it happen?
+      options:
+        - Playback
+        - Equaliser / audio effects
+        - Visualiser
+        - Library import
+        - Playlists
+        - New releases / catalogue sync
+        - Search
+        - Statistics
+        - Settings / backup
+        - Installed app (PWA / offline)
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Extra details
+      description: "Settings > Music sources shows each source's status. Console errors and file formats (for imports) help a lot. Please do not paste your Jamendo client ID."
